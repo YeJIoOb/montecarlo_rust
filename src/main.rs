@@ -9,7 +9,7 @@ use std::thread::{self, JoinHandle};
 use mc::{MonteCarlo, Runnable};
 use sim::SimulationIgnis;
 
-impl MonteCarlo<SimulationIgnis, u32> {
+impl<'a> MonteCarlo<SimulationIgnis, u32> {
     pub fn get_avg(&self, params: Arc<HashMap<&str, &str>>) -> f32 {
         let mut sum = 0.0f32;
 
@@ -22,10 +22,11 @@ impl MonteCarlo<SimulationIgnis, u32> {
             let start: usize = num_cpu * chunks_size;
             let end: usize = (num_cpu + 1) * chunks_size;
             let sim = self.simulation.clone();
-            let th = thread::spawn(&|| {
+            let params = Arc::clone(&params);
+            let th = thread::spawn(move || {
                 let mut sum = 0.0f32;
                 for _ in start..end {
-                    let x = sim.run(params.clone());
+                    let x = sim.run(Arc::clone(&params));
                     sum += x as f32;
                 }
                 sum
@@ -45,7 +46,7 @@ fn main() {
     let mc = Box::new(MonteCarlo::<SimulationIgnis, u32> {
         n: 2_000_000usize,
         simulation: SimulationIgnis {},
-        phantom_type: PhantomData
+        phantom_type: PhantomData,
     });
     let params: Arc<HashMap<&str, &str>> =
         Arc::new(HashMap::from([("start_modif", "0"), ("end_modif", "6")]));

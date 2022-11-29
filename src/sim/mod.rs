@@ -8,7 +8,7 @@ pub struct SimulationIgnis {}
 
 const CHANCES: &[f32] = &[1.0, 0.5, 0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.1, 0.03, 0.01];
 
-impl Runnable<u32> for SimulationIgnis {
+impl<'a> Runnable<u32> for SimulationIgnis {
     fn run(&self, params: Arc<HashMap<&str, &str>>) -> u32 {
         let mut random_gen = thread_rng();
         let mut spent = 0u32;
@@ -41,7 +41,7 @@ impl Runnable<u32> for SimulationIgnis {
         spent
     }
 
-    fn run_mut(&mut self, params: Arc<HashMap<&str, &str>>) -> u32 {
+    fn run_mut(&mut self, params: HashMap<&str, &str>) -> u32 {
         return 0u32;
     }
 }
