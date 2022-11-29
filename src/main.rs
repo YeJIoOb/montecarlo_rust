@@ -1,29 +1,31 @@
 mod mc;
 mod sim;
 
+use std::collections::HashMap;
+use std::marker::PhantomData;
+use std::sync::Arc;
 use std::thread::{self, JoinHandle};
-use std::{ collections::HashMap };
 
-use mc::{MonteCarlo};
+use mc::{MonteCarlo, Runnable};
 use sim::SimulationIgnis;
 
-impl<'a> MonteCarlo<'a, u32> {
-    pub fn get_avg(&'a self, params: HashMap<&str, &str>) -> f32 {
+impl MonteCarlo<SimulationIgnis, u32> {
+    pub fn get_avg(&self, params: Arc<HashMap<&str, &str>>) -> f32 {
         let mut sum = 0.0f32;
 
         let num_cpus = num_cpus::get() - 1;
         let chunks_size = self.n / num_cpus;
 
-        let threads: Vec::<JoinHandle::<f32>> = vec![];
+        let mut threads: Vec<JoinHandle<f32>> = vec![];
 
         for num_cpu in 0..num_cpus {
-            let start = num_cpu * chunks_size;
-            let end = (num_cpu + 1) * chunks_size;
-
-            let th = thread::spawn(|| {
+            let start: usize = num_cpu * chunks_size;
+            let end: usize = (num_cpu + 1) * chunks_size;
+            let sim = self.simulation.clone();
+            let th = thread::spawn(&|| {
                 let mut sum = 0.0f32;
                 for _ in start..end {
-                    let x = self.simulation.run(&params);
+                    let x = sim.run(params.clone());
                     sum += x as f32;
                 }
                 sum
@@ -40,17 +42,13 @@ impl<'a> MonteCarlo<'a, u32> {
 }
 
 fn main() {
-    let sim = SimulationIgnis {};
-    let mc = MonteCarlo::<u32> {
+    let mc = Box::new(MonteCarlo::<SimulationIgnis, u32> {
         n: 2_000_000usize,
-        simulation: &sim,
-    };
-
-    let avg = mc.get_avg(
-        HashMap::from([
-            ("start_modif", "0"),
-            ("end_modif", "6"),
-        ])
-    );
+        simulation: SimulationIgnis {},
+        phantom_type: PhantomData
+    });
+    let params: Arc<HashMap<&str, &str>> =
+        Arc::new(HashMap::from([("start_modif", "0"), ("end_modif", "6")]));
+    let avg = mc.get_avg(params);
     println!("avg is {}", avg);
 }

@@ -1,11 +1,16 @@
-use std::collections::HashMap;
+use std::sync::Arc;
+use std::{collections::HashMap};
+use std::marker::PhantomData;
 
-pub struct MonteCarlo<'a, T> {
+pub struct MonteCarlo<TSim, T>
+where TSim : Runnable<T> + Send + Sync
+{
     pub n: usize,
-    pub simulation: &'a (dyn Runnable<T> + Send + Sync),
+    pub simulation: TSim,
+    phantom_type: PhantomData<T>
 }
 
 pub trait Runnable<T> {
-    fn run(&self, params: &HashMap<&str, &str>) -> T;
-    fn run_mut(&mut self, params: &HashMap<&str, &str>) -> T;
+    fn run(&self, params: Arc<HashMap<&str, &str>>) -> T;
+    fn run_mut(&mut self, params: Arc<HashMap<&str, &str>>) -> T;
 }
