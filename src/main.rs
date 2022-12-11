@@ -1,55 +1,30 @@
+#[macro_use]
+extern crate lazy_static;
+
 mod mc;
 mod sim;
 
-use std::collections::HashMap;
-use std::marker::PhantomData;
-use std::sync::Arc;
-use std::thread::{self, JoinHandle};
+use std::{collections::HashMap, sync::Arc};
 
-use mc::{MonteCarlo, Runnable};
-use sim::SimulationIgnis;
-
-impl<'a> MonteCarlo<SimulationIgnis, u32> {
-    pub fn get_avg(&self, params: Arc<HashMap<&str, &str>>) -> f32 {
-        let mut sum = 0.0f32;
-
-        let num_cpus = num_cpus::get() - 1;
-        let chunks_size = self.n / num_cpus;
-
-        let mut threads: Vec<JoinHandle<f32>> = vec![];
-
-        for num_cpu in 0..num_cpus {
-            let start: usize = num_cpu * chunks_size;
-            let end: usize = (num_cpu + 1) * chunks_size;
-            let sim = self.simulation.clone();
-            let params = Arc::clone(&params);
-            let th = thread::spawn(move || {
-                let mut sum = 0.0f32;
-                for _ in start..end {
-                    let x = sim.run(Arc::clone(&params));
-                    sum += x as f32;
-                }
-                sum
-            });
-            threads.push(th);
-        }
-
-        for thread in threads {
-            let val = thread.join().unwrap();
-            sum += val;
-        }
-        sum / (num_cpus as f32)
-    }
-}
-
+use mc::{MonteCarlo};
+use sim::{ignis::SimulationIgnis};
 fn main() {
-    let mc = Box::new(MonteCarlo::<SimulationIgnis, u32> {
-        n: 2_000_000usize,
-        simulation: SimulationIgnis {},
-        phantom_type: PhantomData,
-    });
-    let params: Arc<HashMap<&str, &str>> =
-        Arc::new(HashMap::from([("start_modif", "0"), ("end_modif", "6")]));
-    let avg = mc.get_avg(params);
+
+    lazy_static! {
+        static ref PARAMETERS: HashMap<&'static str, &'static str> = {
+            let mut m = HashMap::new();
+            m.insert("start_modif", "0");
+            m.insert("end_modif", "6");
+            m
+        };
+    }
+    let mc = MonteCarlo::<u32>::new_with(
+        2_000_000usize, 
+        Arc::new(Box::new(SimulationIgnis {}))
+    );
+
+    let avg = mc.get_avg_t(&PARAMETERS);
+
+    // let avg = mc.get_avg(&PARAMETERS);
     println!("avg is {}", avg);
 }
