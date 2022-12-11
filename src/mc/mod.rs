@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::{collections::HashMap};
 use std::marker::PhantomData;
@@ -24,13 +24,13 @@ impl<T> MonteCarlo<T>
 }
 
 pub trait Runnable<T> {
-    fn run(&self, params: &'static HashMap<&str, &str>) -> T;
+    fn run(&self, params: &'static Mutex<HashMap<&str, &str>>) -> T;
 }
 
 
 
 impl MonteCarlo<u32> {
-    pub fn get_avg(&self, params: &'static HashMap<&str, &str>) -> f32 {
+    pub fn get_avg(&self, params: &'static Mutex<HashMap<&str, &str>>) -> f32 {
         let mut sum = 0.0f32;
 
         for _ in 0..self.n {
@@ -41,7 +41,7 @@ impl MonteCarlo<u32> {
         sum / (self.n as f32)
     }
 
-    pub fn get_avg_t(&self, params: &'static HashMap<&str, &str>) -> f32 {
+    pub fn get_avg_t(&self, params: &'static Mutex<HashMap<&str, &str>>) -> f32 {
         let mut sum = 0.0f32;
 
         let num_cpu = num_cpus::get();
@@ -54,7 +54,7 @@ impl MonteCarlo<u32> {
                 let mut sum = 0.0f32;
 
                 for _ in 0..chunk_size {
-                    let x = sim.run(params);
+                    let x = sim.run(&params);
                     sum += x as f32;
                 }
 
