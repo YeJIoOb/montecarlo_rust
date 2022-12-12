@@ -40,6 +40,9 @@ struct Args {
     /// Count of iterations to simulate
     #[arg(long)]
     n: usize,
+    /// Command to compute, avaliable: avg
+    #[arg(long, default_value_t = ("avg").to_string())]
+    command: String,
     /// Start simulation from modify lvl
     #[arg(long)]
     start: u8,
@@ -82,30 +85,43 @@ fn main() {
             Mutex::new(HashMap::new())
         };
     }
-    let sim: Simulation<u32>;
+    let sim: Result<Simulation<u32>, String> =
     match &args.sim[..] {
-        "benir" => sim = Arc::new(Box::new(SimulationBenir {})),
-        "ignis" => sim = Arc::new(Box::new(SimulationIgnis {})),
+        "benir" => Ok(Arc::new(Box::new(SimulationBenir {}))),
+        "ignis" => Ok(Arc::new(Box::new(SimulationIgnis {}))),
         el =>  {
-            println!("Unexpected simulation name {}. Read --help", el);
-            return;
+            Err(format!("Unexpected simulation name {}. Read --help", el))
         }
+    };
+    if let Err(err_str) = sim {
+        println!("{}", err_str);
+        return;
     }
     let mc = MonteCarlo::<u32>::new_with(
         args.n, 
-        sim,
+        sim.unwrap(),
         args.collect_values
     );
     PARAMETERS.lock().unwrap().insert("start_modif", string_to_static_str(args.start.to_string()));
     PARAMETERS.lock().unwrap().insert("end_modif", string_to_static_str(args.end.to_string()));
-    let avg = mc.get_avg_t(&PARAMETERS);
+
+    if args.command == "avg" {
+        let avg = {
+            if args.n < 1000 {
+                mc.get_avg(&PARAMETERS)
+            } else {
+                mc.get_avg_t(&PARAMETERS)
+            }
+        };
+        println!("Avg is: {}", avg);
+    }
 
     if args.collect_values {
         let file_name = &args.collect_file[..];
         let write_result = write_values(mc.values, file_name);
         
         match write_result {
-            Ok(_) => println!("avg is {}", avg),
+            Ok(_) => {},
             Err(er) => panic!("{}", er)
         }
     }
