@@ -1,17 +1,32 @@
 use std::{collections::HashMap, sync::Mutex};
-use rand::{ thread_rng, Rng };
-
+use rand::{ thread_rng };
+use crate::dice::{Dice};
 use crate::mc::Runnable;
 
 #[derive(Debug, Clone)]
 pub struct SimulationIgnis {}
 
-const CHANCES: &[f32] = &[1.0, 0.5, 0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.1, 0.03, 0.01];
+
+fn make_chances() -> Vec<Dice> {
+    vec![
+        Dice::new_with(1.0, thread_rng()),
+        Dice::new_with(0.5, thread_rng()),
+        Dice::new_with(0.5, thread_rng()),
+        Dice::new_with(0.4, thread_rng()),
+        Dice::new_with(0.4, thread_rng()),
+        Dice::new_with(0.3, thread_rng()),
+        Dice::new_with(0.3, thread_rng()),
+        Dice::new_with(0.2, thread_rng()),
+        Dice::new_with(0.1, thread_rng()),
+        Dice::new_with(0.03, thread_rng()),
+        Dice::new_with(0.01, thread_rng()),
+    ]
+}
 
 impl Runnable<u32> for SimulationIgnis {
     fn run(&self, params: &'static Mutex<HashMap<&str, &str>>) -> u32 {
-        let mut random_gen = thread_rng();
         let mut spent = 0u32;
+        let mut chances = make_chances();
 
         let start_modif = match params.lock().unwrap().get("start_modif") {
             Some(x) => x.parse::<u8>().unwrap(),
@@ -24,11 +39,9 @@ impl Runnable<u32> for SimulationIgnis {
         let mut cur_modif = start_modif;
 
         loop {
-            let val = random_gen.gen_range(0.0f32..1.0f32);
-
             spent += 1;
 
-            if CHANCES[(cur_modif + 1) as usize] > val {
+            if chances[(cur_modif + 1) as usize].check() > 0 {
                 cur_modif += 1;
             } else {
                 cur_modif = 0;
