@@ -1,4 +1,4 @@
-use rand::{ Rng, rngs::ThreadRng };
+use rand::{rngs::ThreadRng, Rng};
 
 pub struct Dice {
     pub chance: f32,
@@ -7,10 +7,7 @@ pub struct Dice {
 
 impl Dice {
     pub fn new_with(chance: f32, rng: ThreadRng) -> Self {
-        Self {
-            chance,
-            rng
-        }
+        Self { chance, rng }
     }
     pub fn check(&mut self) -> u8 {
         if self.rng.gen_range(0.0..1.0) < self.chance {

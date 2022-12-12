@@ -1,11 +1,10 @@
-use std::{collections::HashMap, sync::Mutex};
-use rand::{ thread_rng };
-use crate::dice::{Dice};
+use crate::dice::Dice;
 use crate::mc::Runnable;
+use rand::thread_rng;
+use std::{collections::HashMap, sync::Mutex};
 
 #[derive(Debug, Clone)]
 pub struct SimulationIgnis {}
-
 
 fn make_chances() -> Vec<Dice> {
     vec![

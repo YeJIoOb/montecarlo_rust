@@ -17,7 +17,7 @@ impl<T> MonteCarlo<T> {
             n,
             simulation,
             values: Mutex::new(Vec::with_capacity(n)),
-            collect_values
+            collect_values,
         }
     }
 }

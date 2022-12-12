@@ -1,70 +1,10 @@
+use rand::thread_rng;
 use std::{collections::HashMap, sync::Mutex};
-use rand::{ thread_rng };
 
-use crate::{mc::Runnable, dice::Dice};
+use crate::{dice::Dice, mc::Runnable};
 
 #[derive(Debug, Clone)]
 pub struct SimulationBenir {}
-
-// const CHANCES: &[f32] = &[
-//     1.0,
-//     1.0,
-//     0.5,
-//     0.45,
-//     0.4,
-//     0.35,
-//     0.5,
-//     0.45,
-//     0.4,
-//     0.35,
-//     0.3,
-//     0.25,
-//     0.5,
-//     0.35,
-//     0.3,
-//     0.25,
-//     0.2,
-//     0.15,
-//     0.5,
-//     0.35,
-//     0.3,
-//     0.25,
-//     0.2,
-//     0.15,
-//     0.5
-// ];
-
-// lazy_static! {
-//     static ref CHANCES : Vec<Dice> = {
-//         vec![
-//             Dice::new_with(1.0),
-//             Dice::new_with(1.0),
-//             Dice::new_with(0.5),
-//             Dice::new_with(0.45),
-//             Dice::new_with(0.4),
-//             Dice::new_with(0.35),
-//             Dice::new_with(0.5),
-//             Dice::new_with(0.45),
-//             Dice::new_with(0.4),
-//             Dice::new_with(0.35),
-//             Dice::new_with(0.3),
-//             Dice::new_with(0.25),
-//             Dice::new_with(0.5),
-//             Dice::new_with(0.35),
-//             Dice::new_with(0.3),
-//             Dice::new_with(0.25),
-//             Dice::new_with(0.2),
-//             Dice::new_with(0.15),
-//             Dice::new_with(0.5),
-//             Dice::new_with(0.35),
-//             Dice::new_with(0.3),
-//             Dice::new_with(0.25),
-//             Dice::new_with(0.2),
-//             Dice::new_with(0.15),
-//             Dice::new_with(0.5),
-//         ]
-//     };
-// }
 
 fn make_chances() -> Vec<Dice> {
     vec![
@@ -112,7 +52,6 @@ impl Runnable<u32> for SimulationBenir {
         let mut chances = make_chances();
 
         loop {
-
             spent += 1;
 
             if chances[(cur_modif + 1) as usize].check() > 0 {
@@ -123,7 +62,7 @@ impl Runnable<u32> for SimulationBenir {
                     6..=11 => cur_modif = 6,
                     12..=17 => cur_modif = 12,
                     18..=23 => cur_modif = 18,
-                    _ => panic!("out of range")
+                    _ => panic!("out of range"),
                 }
             }
 
