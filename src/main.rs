@@ -1,21 +1,24 @@
 #[macro_use]
 extern crate lazy_static;
+use clap::{arg, command, Parser};
 use std::fs::{self, OpenOptions};
-use clap::{command, arg, Parser};
 
+mod dice;
 mod mc;
 mod sim;
-mod dice;
 
 use std::io::Write;
 use std::path::Path;
-use std::{collections::HashMap, sync::{Arc, Mutex}};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
-use mc::{MonteCarlo};
-use serde::{Serializer, Serialize};
-use sim::{ignis::SimulationIgnis, benir::SimulationBenir};
+use mc::MonteCarlo;
+use serde::{Serialize, Serializer};
+use sim::{benir::SimulationBenir, ignis::SimulationIgnis};
 
-use crate::mc::{Simulation};
+use crate::mc::Simulation;
 
 pub struct MutexWrapper<T: ?Sized>(pub Mutex<T>);
 
@@ -67,7 +70,6 @@ fn write_values(values: Mutex<Vec<u32>>, file_name: &str) -> Result<usize, std::
         .append(true)
         .open(file_name)
         .unwrap();
-        
 
     let res = serde_json::to_string(&Arc::new(MutexWrapper(values))).unwrap();
     file.write(res.as_bytes())
@@ -81,29 +83,27 @@ fn main() {
     let args = Args::parse();
 
     lazy_static! {
-        static ref PARAMETERS: Mutex<HashMap<&'static str, &'static str>> = {
-            Mutex::new(HashMap::new())
-        };
+        static ref PARAMETERS: Mutex<HashMap<&'static str, &'static str>> =
+            Mutex::new(HashMap::new());
     }
-    let sim: Result<Simulation<u32>, String> =
-    match &args.sim[..] {
+    let sim: Result<Simulation<u32>, String> = match &args.sim[..] {
         "benir" => Ok(Arc::new(Box::new(SimulationBenir {}))),
         "ignis" => Ok(Arc::new(Box::new(SimulationIgnis {}))),
-        el =>  {
-            Err(format!("Unexpected simulation name {}. Read --help", el))
-        }
+        el => Err(format!("Unexpected simulation name {}. Read --help", el)),
     };
     if let Err(err_str) = sim {
         println!("{}", err_str);
         return;
     }
-    let mc = MonteCarlo::<u32>::new_with(
-        args.n, 
-        sim.unwrap(),
-        args.collect_values
-    );
-    PARAMETERS.lock().unwrap().insert("start_modif", string_to_static_str(args.start.to_string()));
-    PARAMETERS.lock().unwrap().insert("end_modif", string_to_static_str(args.end.to_string()));
+    let mc = MonteCarlo::<u32>::new_with(args.n, sim.unwrap(), args.collect_values);
+    PARAMETERS
+        .lock()
+        .unwrap()
+        .insert("start_modif", string_to_static_str(args.start.to_string()));
+    PARAMETERS
+        .lock()
+        .unwrap()
+        .insert("end_modif", string_to_static_str(args.end.to_string()));
 
     if args.command == "avg" {
         let avg = {
@@ -119,12 +119,10 @@ fn main() {
     if args.collect_values {
         let file_name = &args.collect_file[..];
         let write_result = write_values(mc.values, file_name);
-        
+
         match write_result {
-            Ok(_) => {},
-            Err(er) => panic!("{}", er)
+            Ok(_) => {}
+            Err(er) => panic!("{}", er),
         }
     }
-    
-
 }
