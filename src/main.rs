@@ -86,7 +86,10 @@ fn main() {
     match &args.sim[..] {
         "benir" => sim = Arc::new(Box::new(SimulationBenir {})),
         "ignis" => sim = Arc::new(Box::new(SimulationIgnis {})),
-        el => panic!("Unexpected simulation name {}. Read --help", el)
+        el =>  {
+            println!("Unexpected simulation name {}. Read --help", el);
+            return;
+        }
     }
     let mc = MonteCarlo::<u32>::new_with(
         args.n, 
