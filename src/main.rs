@@ -18,7 +18,7 @@ use mc::MonteCarlo;
 use serde::{Serialize, Serializer};
 use sim::{benir::SimulationBenir, ignis::SimulationIgnis};
 
-use crate::mc::Simulation;
+use crate::mc::{Simulation, SimulationErrorKind};
 
 pub struct MutexWrapper<T: ?Sized>(pub Mutex<T>);
 
@@ -106,14 +106,22 @@ fn main() {
         .insert("end_modif", string_to_static_str(args.end.to_string()));
 
     if args.command == "avg" {
-        let avg = {
+        let avg_result = {
             if args.n < 1000 {
                 mc.get_avg(&PARAMETERS)
             } else {
                 mc.get_avg_t(&PARAMETERS)
             }
         };
-        println!("Avg is: {}", avg);
+
+        match avg_result {
+            Ok(avg) => println!("Avg is: {}", avg),
+            Err(err) => {
+                match err {
+                    SimulationErrorKind::IncorrectModifyRange(str) => println!("{}", str)
+                }
+            }
+        }
     }
 
     if args.collect_values {

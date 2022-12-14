@@ -1,4 +1,6 @@
 use crossbeam::thread::{self, ScopedJoinHandle};
+use rand::rngs::ThreadRng;
+use rand::thread_rng;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -23,23 +25,36 @@ impl<T> MonteCarlo<T> {
 }
 
 pub trait Runnable<T> {
-    fn run(&self, params: &'static Mutex<HashMap<&str, &str>>) -> T;
+    fn run(&self, params: &'static Mutex<HashMap<&str, &str>>, th_rng: &mut ThreadRng) -> Result<T, SimulationErrorKind>;
+}
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum SimulationErrorKind {
+    IncorrectModifyRange(String)
 }
 
 impl MonteCarlo<u32> {
-    pub fn get_avg(&self, params: &'static Mutex<HashMap<&str, &str>>) -> f32 {
-        let sum = (0..self.n).into_iter().fold(0.0f32, move |acc, _| {
-            let x = self.simulation.run(params);
-            if self.collect_values {
-                self.values.lock().unwrap().push(x);
+    pub fn get_avg(&self, params: &'static Mutex<HashMap<&str, &str>>) -> Result<f32, SimulationErrorKind> {
+        let mut th_rng = thread_rng();
+        let mut sum = 0.0f32;
+        for _ in 0..self.n {
+            let res = self.simulation.run(params, &mut th_rng);
+            
+            match res {
+                Ok(x) => {
+                    if self.collect_values {
+                        self.values.lock().unwrap().push(x);
+                    }
+                    sum += x as f32;
+                },
+                Err(err) => { return Err(err); }
             }
-            acc + x as f32
-        });
+        }
 
-        sum / (self.n as f32)
+        Ok(sum / (self.n as f32))
     }
 
-    pub fn get_avg_t(&self, params: &'static Mutex<HashMap<&str, &str>>) -> f32 {
+    pub fn get_avg_t(&self, params: &'static Mutex<HashMap<&str, &str>>) -> Result<f32, SimulationErrorKind> {
         let num_cpu = num_cpus::get();
         let chunk_size = self.n / num_cpu;
         let values = Arc::new(&self.values);
@@ -47,24 +62,40 @@ impl MonteCarlo<u32> {
         let sim = Arc::clone(&self.simulation);
         let values = Arc::clone(&values);
         let res = thread::scope(|s| {
-            let sum = (0..num_cpu)
-                .into_iter()
-                .fold(Vec::<ScopedJoinHandle<f32>>::new(), |mut acc, _| {
-                    let handle = s.spawn(|_| {
-                        (0..chunk_size).into_iter().fold(0f32, |acc, _| {
-                            let x = sim.run(params);
-                            if self.collect_values {
-                                values.lock().unwrap().push(x);
-                            }
-                            acc + x as f32
-                        }) / (chunk_size as f32)
-                    });
-                    acc.push(handle);
-                    acc
-                })
-                .into_iter()
-                .fold(0.0f32, |acc, th| acc + th.join().unwrap());
-            sum / (num_cpu as f32)
+            let mut sum = 0.0f32;
+            let mut ths = Vec::<ScopedJoinHandle<Result<f32, SimulationErrorKind>>>::new();
+            for _ in 0..num_cpu {
+                let handle: ScopedJoinHandle<Result<f32, SimulationErrorKind>> = s.spawn(|_| {
+                    let mut th_rng = thread_rng();
+                    let mut in_sum = 0f32;
+                    for _ in 0..chunk_size {
+                        let res = sim.run(params, &mut th_rng);
+                        match res {
+                            Ok(x) => {
+                                if self.collect_values {
+                                    values.lock().unwrap().push(x);
+                                }
+                                in_sum += x as f32;
+                            },
+                            Err(err) => { return Err(err); }
+                        }
+                    }
+                    Ok(in_sum / (chunk_size as f32))
+                });
+                ths.push(handle);
+            }
+            for th in ths {
+                if let Ok(th_res) = th.join() {
+                    match th_res {
+                        Ok(x) => {
+                            sum += x;
+                        },
+                        Err(err) => { return Err(err); }
+                    }
+                }
+                
+            }
+            Ok(sum / (num_cpu as f32))
         });
 
         res.unwrap()
